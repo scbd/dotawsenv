@@ -1,7 +1,7 @@
 {
   "name": "dotawsenv",
-  "version": "1.0.0",
-  "description": "tiny utility to load AWS secrets in application environment.",
+  "version": "1.0.1",
+  "description": "Tiny utility to load AWS secrets in application environment.",
   "main": "./dist/dotawsenv.cjs",
   "exports": {
     ".": {
@@ -18,6 +18,15 @@
   },
   "author": "Blaise Fonseca",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scbd/dotawsenv.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/scbd/dotawsenv/issues"
+  },
+  "homepage": "https://github.com/scbd/dotawsenv#readme",
   "dependencies": {
     "aws-sdk": "2.899.0",
     "dotenv": "8.2.0",
