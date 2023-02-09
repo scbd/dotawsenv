@@ -14,7 +14,7 @@
   "scripts": {
     "build": "npx rollup -c",
     "dev": "npx rollup -c --watch",
-    "clean-reinstall": "rm -rf package-lock.json rm -rf node_modules && npm install",
+    "clean-reinstall": "rm -rf package-lock.json rm -rf node_modules && npm install"
   },
   "author": "Blaise Fonseca",
   "license": "MIT",
