@@ -1,7 +1,7 @@
 import { loadConfig, loadSecretsFromAws, applySecrets } from './lib/main.js'
 import { options } from './lib/options.js';
 import { cliOptions } from './lib/cli-options.js';
-const { forceSync } = require('node-force-sync');
+import { forceSync } from 'node-force-sync';
 
 (function () {
 
@@ -10,16 +10,19 @@ const { forceSync } = require('node-force-sync');
     const parsedSecrets = loadConfig(runOptions);
 
     if(Object.keys(parsedSecrets||{}).length){
-        
         if(runOptions.async)
         {
-            return loadSecretsFromAws(parsedSecrets, runOptions)
-            .then(({errors, parsed})=>{
-
+            (async ()=>{
+                
+                const {errors, parsed} = await loadSecretsFromAws(parsedSecrets, runOptions)
+                
                 applySecrets({errors, parsed});
-                if(errors)
-                    console.error('Error fetching secret value for ', errors)
-            });
+
+                if(Object.keys(errors).length)
+                    console.warn('Error fetching secret value for ', errors);
+
+
+            })();
         }
         else{
 
@@ -28,8 +31,8 @@ const { forceSync } = require('node-force-sync');
 
             applySecrets({errors, parsed});
 
-            if(errors)
-                console.error('Error fetching secret value for ', errors)
+            if(Object.keys(errors).length)
+                console.warn('Error fetching secret value for ', errors)
         }
     }
 })()
