@@ -1,6 +1,6 @@
 {
   "name": "dotawsenv",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Tiny utility to load AWS secrets in application environment.",
   "main": "./dist/dotawsenv.cjs",
   "exports": {
