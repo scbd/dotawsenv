@@ -19,7 +19,7 @@ import { forceSync } from 'node-force-sync';
                 applySecrets({errors, parsed});
 
                 if(Object.keys(errors).length)
-                    console.warn('Error fetching secret value for ', errors);
+                    console.debug('Error fetching secret value for ', errors);
 
 
             })();
@@ -32,7 +32,7 @@ import { forceSync } from 'node-force-sync';
             applySecrets({errors, parsed});
 
             if(Object.keys(errors).length)
-                console.warn('Error fetching secret value for ', errors)
+                console.debug('Error fetching secret value for ', errors)
         }
     }
 })()
