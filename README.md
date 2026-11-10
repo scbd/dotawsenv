@@ -103,3 +103,103 @@ You can additionally, pass options to `config`.
 | region            | dotawsenv_config_region            | `required`, default: `AWS SDK will look for .aws file` | AWS secret region  |
 | async             | dotawsenv_config_async             | `optional`, default `false` | To run in async mode. |
 | debug             | dotawsenv_config_debug             | `optional`| To turn on debugging. |
+## Shell wrapper (any language)
+
+`bin/dotawsenv.sh` does the same job for any process (.NET, Node, Python, ...): it loads the secrets listed in
+`.awsenv` into the environment, then `exec`s your command.
+
+```bash
+dotawsenv.sh <command> [args...]
+
+dotawsenv.sh dotnet App.dll
+dotawsenv.sh node app.js
+dotawsenv.sh python -m myapp
+```
+
+It is a POSIX `sh` script (dash, busybox ash on Alpine, bash) with no dependency other than the
+[AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+
+### `.awsenv`
+
+```dosini
+# NAME=<secret name or full ARN>
+DB_CREDENTIALS=prod/app/db
+API_KEY=arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/app/api-key-AbCdEf
+```
+
+- Blank lines and `#` comments are skipped. An `export ` prefix and quotes around the secret id are allowed.
+- `NAME` must match `[A-Za-z_][A-Za-z0-9_]*`.
+- The whole secret value goes into `NAME`: the SecretString, or the SecretBinary decoded. JSON secrets are not
+  split into keys; the app parses the JSON itself.
+- A variable that is already set to a non-empty value is not loaded, so a value can be overridden locally or per
+  deployment.
+- Values are never logged and are set exactly as stored (spaces, quotes, `$`, newlines). They exist only in the
+  environment of the command, not in the container config (`docker inspect`).
+
+### Options
+
+| Variable                | Default     | Description        |
+| ----------------------- | ----------- | ------------------ |
+| `DOTAWSENV_CONFIG_PATH` | `./.awsenv` | The `.awsenv` file |
+
+When `./.awsenv` does not exist and `DOTAWSENV_CONFIG_PATH` is not set, the script makes no AWS call (the AWS CLI
+is not even needed) and runs the command unchanged. When `DOTAWSENV_CONFIG_PATH` is set and the file is missing, it
+fails with `dotawsenv: <path> not found`. `DOTAWSENV_CONFIG_PATH` is removed from the environment of the command.
+
+### Credentials
+
+The script uses the normal AWS credential chain, the same credentials as the app: env `AWS_*`, profile, then the
+ECS task role or EC2 instance role. Give that role access to the secrets (see [AWS setup](#aws-setup)).
+
+### Errors
+
+The script fails fast. If a secret cannot be loaded, it prints `dotawsenv: NAME (<secret id>): <aws error>` to
+stderr and exits 1 without running the command, so the orchestrator marks the task failed instead of starting the
+app with missing secrets. A syntax error in `.awsenv` fails the same way, before any AWS call. Nothing is printed
+on success. With no command, it prints the usage and exits 2.
+
+### Docker
+
+Pin a tag or commit and its checksum (`sha256sum dotawsenv.sh`):
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM debian:bookworm-slim AS awscli
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip \
+ && curl -sSfL "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o /tmp/awscliv2.zip \
+ && unzip -q /tmp/awscliv2.zip -d /tmp \
+ && /tmp/aws/install --install-dir /usr/local/aws-cli --bin-dir /usr/local/bin
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+COPY --from=awscli /usr/local/aws-cli /usr/local/aws-cli
+RUN ln -s /usr/local/aws-cli/v2/current/bin/aws /usr/local/bin/aws
+ADD --checksum=sha256:<sha256> https://raw.githubusercontent.com/scbd/dotawsenv/sh-v1.0.0/bin/dotawsenv.sh /usr/local/bin/dotawsenv.sh
+RUN chmod 755 /usr/local/bin/dotawsenv.sh
+WORKDIR /app
+COPY . .
+ENTRYPOINT ["/usr/local/bin/dotawsenv.sh", "dotnet", "App.dll"]
+```
+
+Alpine:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM node:22-alpine
+RUN apk add --no-cache aws-cli
+ADD --checksum=sha256:<sha256> https://raw.githubusercontent.com/scbd/dotawsenv/sh-v1.0.0/bin/dotawsenv.sh /usr/local/bin/dotawsenv.sh
+RUN chmod 755 /usr/local/bin/dotawsenv.sh
+WORKDIR /app
+COPY . .
+ENTRYPOINT ["/usr/local/bin/dotawsenv.sh", "node", "app.js"]
+```
+
+### AWS setup
+
+- **IAM**: the loader needs `secretsmanager:GetSecretValue` on the secrets it reads, plus `kms:Decrypt` when a secret
+  uses a customer-managed KMS key.
+- **EC2 + Docker (Swarm, compose)**: set the IMDSv2 hop limit to 2, otherwise containers can't reach the instance
+  role credentials:
+  `aws ec2 modify-instance-metadata-options --instance-id <id> --http-put-response-hop-limit 2`
+- **Swarm**: `.awsenv` holds only secret ids, not values, so it can be delivered as a config:
+  `docker config create app-awsenv .awsenv`, mount it in the service (for example at `/run/configs/awsenv`) and set
+  `DOTAWSENV_CONFIG_PATH=/run/configs/awsenv`.

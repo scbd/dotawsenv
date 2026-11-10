@@ -1,0 +1,40 @@
+#!/bin/sh
+# Stub of the aws CLI for test/dotawsenv.test.sh. Supports only:
+#   aws secretsmanager get-secret-value --secret-id <id> --query SecretString|SecretBinary --output text
+#
+# Secrets are files in $STUB_SECRETS: <id>.string (SecretString) and/or <id>.binary (SecretBinary).
+# An id starting with "fail-" fails like a missing secret.
+# Each call appends one line to $STUB_LOG with the id, the query, AWS_REGION and AWS_PAGER.
+
+_id=
+_query=
+while [ $# -gt 0 ]; do
+  case $1 in
+    --secret-id) _id=$2; shift ;;
+    --query) _query=$2; shift ;;
+  esac
+  shift
+done
+
+printf '%s %s AWS_REGION=%s AWS_PAGER=%s\n' "$_id" "$_query" "${AWS_REGION-}" "${AWS_PAGER-unset}" >>"$STUB_LOG"
+
+case $_id in
+  fail-*)
+    printf '\nAn error occurred (ResourceNotFoundException) when calling the GetSecretValue operation: Secrets Manager can'"'"'t find the specified secret.\n' >&2
+    exit 254
+    ;;
+esac
+
+_f=$STUB_SECRETS/$_id
+case $_query in
+  SecretString)
+    if [ -f "$_f.string" ]; then cat "$_f.string"; echo; else echo None; fi
+    ;;
+  SecretBinary)
+    if [ -f "$_f.binary" ]; then base64 <"$_f.binary" | tr -d '\n'; echo; else echo None; fi
+    ;;
+  *)
+    echo "stub aws: unsupported query $_query" >&2
+    exit 2
+    ;;
+esac
