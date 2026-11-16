@@ -5,9 +5,25 @@ on:
     types: [published]
 
 jobs:
+  # Calver releases (YYYY.x.y) are for bin/dotawsenv.sh only, not the npm package.
+  # The npm package keeps semver with a 1-2 digit major until it is phased out.
+  check-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      npm: ${{ steps.tag.outputs.npm }}
+    steps:
+      - id: tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          case $TAG in
+            [0-9][0-9][0-9][0-9].*) echo "npm=false" >>"$GITHUB_OUTPUT" ;;
+            *) echo "npm=true" >>"$GITHUB_OUTPUT" ;;
+          esac
+
   npm-publish:
-    # sh-v* releases are for bin/dotawsenv.sh only, not the npm package.
-    if: ${{ !startsWith(github.event.release.tag_name, 'sh-') }}
+    needs: check-tag
+    if: ${{ needs.check-tag.outputs.npm == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1

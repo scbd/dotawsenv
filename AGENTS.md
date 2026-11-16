@@ -37,7 +37,7 @@ The shell wrapper has a test suite (stub `aws` CLI in `test/stub/aws`, CI in `.g
 
 ### Shell wrapper (`bin/dotawsenv.sh`)
 
-A POSIX `sh` version for any language: `dotawsenv.sh <command> [args...]` loads `.awsenv` and `exec`s the command. It is independent of the Node code and uses a different contract: only `DOTAWSENV_CONFIG_PATH` (unset before `exec`), the default AWS credential chain (same credentials as the app), and fail fast with exit 1. Keep it minimal: do not add options for needs nobody has. Internal variables use the `_da_` prefix so they don't change the app's own variables. It fetches every secret into a temp dir before exporting any value. Releases for it are tagged `sh-v*`; `npm-publish.yml` skips those.
+A POSIX `sh` version for any language: `dotawsenv.sh <command> [args...]` loads `.awsenv` and `exec`s the command. It is independent of the Node code and uses a different contract: only `DOTAWSENV_CONFIG_PATH` (unset before `exec`), the default AWS credential chain (same credentials as the app), and fail fast with exit 1. Keep it minimal: do not add options for needs nobody has. Internal variables use the `_da_` prefix so they don't change the app's own variables. It fetches every secret into a temp dir before exporting any value. Releases for it use calver tags (`YYYY.x.y`, e.g. `2026.47.0`); `npm-publish.yml` skips tags that start with 4 digits. The npm package keeps semver tags with a 1-2 digit major (e.g. `1.0.3`) until it is phased out.
 
 ## Build and publish
 
