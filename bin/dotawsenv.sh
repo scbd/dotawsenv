@@ -50,7 +50,7 @@ _da_is_name() {
 
 # aws secretsmanager get-secret-value for secret $1, query $2. Output in $_da_tmp/out and /err.
 _da_aws() {
-  AWS_PAGER= aws secretsmanager get-secret-value --secret-id "$1" --query "$2" --output text \
+  AWS_PAGER='' aws secretsmanager get-secret-value --secret-id "$1" --query "$2" --output text \
     >"$_da_tmp/out" 2>"$_da_tmp/err"
 }
 
